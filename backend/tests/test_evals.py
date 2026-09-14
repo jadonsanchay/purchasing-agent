@@ -58,3 +58,15 @@ def test_recovery_expected_but_agent_gave_up_fails():
     sc = score(CASES["S1-f"], st)
     assert sc["dimensions"]["recovery_behaviour"]["pass"] is False
     assert sc["dimensions"]["decision_correct"]["pass"] is False
+
+
+def test_accepting_forecast_quantity_despite_demand_spike_fails():
+    st = run("S1-e", investigate_cola() + [[proposal("accept", 800, inbound=800, gap=True)]])
+    sc = score(CASES["S1-e"], st)
+    assert sc["dimensions"]["decision_correct"]["pass"] is False
+
+
+def test_sizing_to_actual_demand_with_approval_passes_s1e():
+    st = run("S1-e", investigate_cola(1300) + [[proposal("modify", 1300, inbound=1300, gap=True)]])
+    sc = score(CASES["S1-e"], st)
+    assert sc["passed"], sc["dimensions"]

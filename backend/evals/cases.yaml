@@ -66,17 +66,19 @@
   expect_recovery: false
   final: {inbound: {min: 0, max: 600}, storage_free_min: 0}
 
+# Two defensible answers: gather evidence first (investigate), or size to actual demand (modify, >= 1000 units,
+# which trips the deviation gate so a human sees it). Accepting the forecast-based 800 unchanged is the one wrong answer.
 - id: S1-e
   scenario: S1-e
   sku: SKU-COLA-2L
   node_id: N-BOG
-  expected_actions: [investigate, escalate]
+  expected_actions: [investigate, escalate, modify]
+  expected_qty: {min: 1000, max: 2000}
   required_tools: [get_demand, compute_coverage]
-  forbidden_kinds: [create_po]
   expected_status: [completed, escalated]
-  auto_approve: false
+  auto_approve: true
   expect_recovery: false
-  final: {inbound: {min: 0, max: 0}}
+  final: {inbound: {min: 0, max: 2000}, budget_headroom_min: 0}
 
 - id: S1-f
   scenario: S1-f
