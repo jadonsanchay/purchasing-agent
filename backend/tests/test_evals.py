@@ -86,3 +86,19 @@ def test_s2a_covering_full_target_from_alternate_passes():
     ])
     sc = score(CASES["S2-a"], st)
     assert sc["passed"], sc["dimensions"]
+
+
+def test_trailing_noop_accept_after_recovery_does_not_hide_the_real_decision():
+    from evals.run_evals import effective_decision
+    from app.config import settings
+    milk = {"sku": "SKU-MILK-1L", "node_id": "N-MDE"}
+    # force a validation mismatch via a wrong inbound expectation, then confirm the state with a bare accept
+    st = run("S2-a", [
+        [("compute_coverage", {**milk, "supplier_id": "S-ANDINA"}), ("list_suppliers_for_sku", {"sku": "SKU-MILK-1L"}),
+         ("check_constraints", {**milk, "supplier_id": "S-ANDINA", "quantity": 650, "recommended_qty": None})],
+        [proposal("modify", 250, supplier="S-PACIFICO", po_id="PO-1001", extra=[{"supplier_id": "S-ANDINA", "quantity": 650}], status="confirmed", inbound=850)],
+        [proposal("accept", None, status="none", inbound=900)],
+    ])
+    assert st.recovery_turns_used == 1 and st.status == "completed"
+    assert effective_decision(st).action.value == "modify"
+    assert score(CASES["S2-a"], st)["passed"]

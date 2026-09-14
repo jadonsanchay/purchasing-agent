@@ -38,7 +38,9 @@ expected_outcome is a promise the validator will check: state the PO status you 
 units for the SKU at the node after your actions. Be precise, that is how the system detects when reality diverged.
 
 If the system comes back with a validation failure, read what actually happened, reinvestigate what changed, and
-propose a revised decision or escalate. Do not repeat an action that just failed.
+propose a revised decision or escalate. Do not repeat an action that just failed. If the ERP state is in fact what you
+wanted and only your expectation was off, propose `accept` with no quantity and no po_id: that confirms the current
+state without ordering anything more.
 
 Keep rationales concrete: quantities, days of cover, money, constraints. No filler."""
 

@@ -138,3 +138,12 @@ def test_reference_trajectories_run_clean(sid):
         assert st.status == "completed"
     if st.status == "completed" and st.validations:
         assert st.validations[-1].ok
+
+
+def test_validator_treats_amended_and_partially_confirmed_labels_as_equivalent():
+    milk = {"sku": "SKU-MILK-1L", "node_id": "N-MDE"}
+    r, st = run("S2-a", [
+        [("compute_coverage", {**milk, "supplier_id": "S-ANDINA"}), ("check_constraints", {**milk, "supplier_id": "S-ANDINA", "quantity": 650, "recommended_qty": None})],
+        [proposal("modify", 250, supplier="S-PACIFICO", po_id="PO-1001", extra=[{"supplier_id": "S-ANDINA", "quantity": 650}], status="partially_confirmed", inbound=900)],
+    ])
+    assert st.status == "completed" and st.recovery_turns_used == 0 and st.validations[-1].ok

@@ -51,9 +51,13 @@ def validate(
         mismatches.append(f"expected total inbound {exp['total_inbound_after']}, actual {inbound}")
     exp_status = exp.get("po_status")
     if exp_status and exp_status != "none" and po_statuses:
-        # 'amended' (existing PO reduced, supplier confirmed) and 'confirmed' (new PO) both mean "as requested"
-        norm = {"amended": "confirmed"}
-        bad = {k: v for k, v in po_statuses.items() if norm.get(v, v) != norm.get(exp_status, exp_status)}
+        # Label vocabulary differs between the agent and the ERP ('amended', 'confirmed', 'partially_confirmed' are all
+        # used for "the PO now holds what the supplier will ship"). Quantity mismatches are caught above, so here we
+        # only flag a status that means something materially different: cancelled/rejected vs a live PO, or vice versa.
+        live = {"confirmed", "amended", "partially_confirmed", "submitted"}
+        dead = {"cancelled", "rejected"}
+        cls = lambda st: "live" if st in live else ("dead" if st in dead else st)
+        bad = {k: v for k, v in po_statuses.items() if cls(v) != cls(exp_status)}
         if bad:
             mismatches.append(f"expected PO status '{exp_status}', actual {bad}")
 

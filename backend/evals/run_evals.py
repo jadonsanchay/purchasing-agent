@@ -49,6 +49,19 @@ def tools_before_first_proposal(state: RunState) -> set[str]:
     return seen
 
 
+def effective_decision(state: RunState):
+    """The decision to judge. After a recovery turn the agent may end with `accept` and no quantity, meaning "the
+    current ERP state is acceptable"; that confirmation is not the purchasing decision. Use the last proposal that
+    produced a non-empty plan, falling back to the final decision."""
+    d = state.decision
+    if d and d.action.value == "accept" and d.quantity is None and not d.po_id and not d.additional_orders and state.actions:
+        for e in reversed(state.trace):
+            if e.event == "decision_proposed" and (e.payload.get("quantity") or e.payload.get("po_id") or e.payload.get("additional_orders")):
+                from app.models import Decision
+                return Decision(**e.payload)
+    return d
+
+
 def score(case: dict, state: RunState) -> dict:
     """Returns {dimension: {"pass": bool, "notes": [...]}} plus derived facts."""
     out: dict[str, dict] = {d: {"pass": True, "notes": []} for d in DIMENSIONS}
@@ -57,7 +70,7 @@ def score(case: dict, state: RunState) -> dict:
         out[dim]["pass"] = False
         out[dim]["notes"].append(note)
 
-    d = state.decision
+    d = effective_decision(state)
     ok_actions = [a for a in state.actions if a.result.get("ok")]
     ok_kinds = [a.kind for a in ok_actions]
     new_po_qty = next((a.result.get("ordered_qty") for a in ok_actions if a.kind == "create_po"), None)
