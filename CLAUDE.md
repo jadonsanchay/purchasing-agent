@@ -1,6 +1,6 @@
 # purchasing-agent — working rules
 
-AI Purchasing Agent for the Rappi take-home assignment (see `docs/assignment.md`).
+AI Purchasing Agent for the Rappi take-home assignment (see `docs/assignment.pdf`).
 Goal: a system that **makes, executes, and validates** purchasing decisions. Not a chatbot.
 
 ## Boundaries
