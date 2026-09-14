@@ -33,7 +33,7 @@ READ_TOOLS: list[dict] = [
     _schema("get_recommendation", "Fetch a system purchasing recommendation by id.", {"rec_id": S}, ["rec_id"]),
     _schema("get_product", "Product master data: category, unit cost, unit volume, safety stock days.", {"sku": S}, ["sku"]),
     _schema("get_inventory", "On-hand, reserved and available units for a SKU at a node.", {"sku": S, "node_id": S}, ["sku", "node_id"]),
-    _schema("get_demand", "Forecast for the next 28 days and actual sales for the last 14 days, with averages and recent-vs-forecast deviation.", {"sku": S, "node_id": S}, ["sku", "node_id"]),
+    _schema("get_demand", "Demand summary: forecast daily average and totals for the next 7/14/28 days, actual daily averages for the last 7 and 14 days, and recent-vs-forecast deviation in percent.", {"sku": S, "node_id": S}, ["sku", "node_id"]),
     _schema("get_open_purchase_orders", "Open POs for a SKU at a node with ordered, confirmed and realistically expected quantities (supplier notices applied).", {"sku": S, "node_id": S}, ["sku", "node_id"]),
     _schema("get_purchase_order", "Full detail of one purchase order, including any supplier notices against it.", {"po_id": S}, ["po_id"]),
     _schema("get_supplier_notice", "A supplier's message about a PO it cannot fully fulfil.", {"notice_id": S}, ["notice_id"]),
@@ -101,24 +101,61 @@ def _po(conn, a):
     po = reads.purchase_order(conn, a["po_id"])
     if not po:
         return {"error": f"{a['po_id']} not found"}
-    po["notices"] = reads.notices_for_po(conn, a["po_id"])
+    po["notices"] = [{"can_supply_qty": n["can_supply_qty"], "message": n["message"]} for n in reads.notices_for_po(conn, a["po_id"])]
     return po
+
+
+# ---- token hygiene: the LLM gets summaries, the UI/validator keep the full data ----------------------
+
+PO_FIELDS = ("po_id", "supplier_id", "status", "ordered_qty", "confirmed_qty", "expected_qty", "expected_delivery_day", "unit_price", "latest_notice")
+
+
+def _slim_po(po: dict) -> dict:
+    return {k: po[k] for k in PO_FIELDS if k in po and po[k] is not None}
+
+
+def _demand(conn, a):
+    d = reads.demand(conn, a["sku"], a["node_id"])
+    fc = d.pop("forecast_next_days")
+    actuals = d.pop("actuals_last_14d")
+    d["forecast_total_next_7d"] = sum(fc[:7])
+    d["forecast_total_next_14d"] = sum(fc[:14])
+    d["forecast_total_next_28d"] = sum(fc)
+    d["actual_last_14d_daily_avg"] = round(sum(actuals) / len(actuals), 1) if actuals else 0.0
+    d["actual_last_7d_min_max"] = [min(actuals[-7:]), max(actuals[-7:])] if actuals else None
+    return d
+
+
+def _coverage(conn, a):
+    cov = policy.compute_coverage(conn, a["sku"], a["node_id"], a["supplier_id"]).model_dump()
+    cov["inbound_pos"] = [_slim_po(p) for p in cov["inbound_pos"]]
+    return cov
+
+
+def _open_pos(conn, a):
+    return [_slim_po(p) for p in reads.expected_inbound(conn, a["sku"], a["node_id"])]
+
+
+def _constraints(conn, a):
+    rep = policy.check_constraints(conn, a["sku"], a["node_id"], a["supplier_id"], a["quantity"], a.get("recommended_qty")).model_dump()
+    rep["checks"] = [{"name": c["name"], "status": c["status"], "detail": c["detail"]} for c in rep["checks"]]
+    return rep
 
 
 DISPATCH: dict[str, ToolFn] = {
     "get_recommendation": lambda c, a: reads.recommendation(c, a["rec_id"]) or {"error": "not found"},
     "get_product": lambda c, a: reads.product(c, a["sku"]) or {"error": "not found"},
     "get_inventory": lambda c, a: reads.inventory(c, a["sku"], a["node_id"]) or {"error": "not found"},
-    "get_demand": lambda c, a: reads.demand(c, a["sku"], a["node_id"]),
-    "get_open_purchase_orders": lambda c, a: reads.expected_inbound(c, a["sku"], a["node_id"]),
+    "get_demand": _demand,
+    "get_open_purchase_orders": _open_pos,
     "get_purchase_order": _po,
     "get_supplier_notice": lambda c, a: reads.supplier_notice(c, a["notice_id"]) or {"error": "not found"},
     "get_supplier": lambda c, a: reads.supplier(c, a["supplier_id"], a["sku"]) or {"error": "not found"},
     "list_suppliers_for_sku": lambda c, a: reads.suppliers_for_sku(c, a["sku"]),
     "get_budget": _budget,
     "get_storage": lambda c, a: reads.storage(c, a["node_id"]) or {"error": "not found"},
-    "compute_coverage": lambda c, a: policy.compute_coverage(c, a["sku"], a["node_id"], a["supplier_id"]).model_dump(),
-    "check_constraints": lambda c, a: policy.check_constraints(c, a["sku"], a["node_id"], a["supplier_id"], a["quantity"], a.get("recommended_qty")).model_dump(),
+    "compute_coverage": _coverage,
+    "check_constraints": _constraints,
 }
 
 
@@ -135,4 +172,5 @@ def call_tool(conn: sqlite3.Connection, run_id: str, name: str, arguments: dict[
 
 
 def dumps(obj: Any) -> str:
-    return json.dumps(obj, default=str)
+    """Compact JSON for tool results sent to the model (no spaces after separators)."""
+    return json.dumps(obj, default=str, separators=(",", ":"))
