@@ -32,6 +32,19 @@ Short log of the choices that shaped the solution, so they can be discussed and 
 - **Repeat runs for consistency.** `--repeat 3` shows whether the live model is stable; per-case pass counts are printed.
 - **No LLM judge by default.** Rationale quality is only surfaced as a soft signal (number density). Cheap, honest, and avoids grading the model with the model.
 
+## What the first live runs changed (gpt-4.1, 2026-09-14)
+- **S1-e (forecast vs actuals).** The model saw the +83% spike, wrote it into its rationale, and still accepted the forecast-based 800. The prompt now says a demand-signal flag makes the forecast quantity an unsafe default: investigate, or size to actual demand and explain. The rubric accepts either `investigate`/`escalate` or a `modify` of at least 1000 units (which trips the deviation gate, so a human sees it). Accepting 800 unchanged still fails. After the change the model sized to 1,500 with a clear rationale.
+- **S1-f (budget consumed at execution).** After the ERP rejection the model correctly found the 400-unit maximum but escalated because "it needs approval". Escalating a decision the system would route for approval anyway is a cop-out, so the prompt now says approval is not a reason to escalate. The rerun proposed 400, paused for approval, and validated clean.
+- **Rate limits.** A recovery run alone can exceed a low-tier 30k tokens-per-minute limit because the whole conversation is resent every turn. The OpenAI adapter now retries 429/5xx with exponential backoff and honours `Retry-After`; the SDK's built-in retries were too short.
+- **Cost.** Measured, not estimated: about 4-7k input and ~0.9k output tokens for a clean run, 17-24k input for a run with a recovery turn. Roughly $0.02-0.06 per run on gpt-4.1; a full nine-case pass is well under a dollar.
+
+## Live eval pass 1 (gpt-4.1, 27 runs, 22 passed) and what it changed
+- **S2-a (3/3 failed) was a rubric bug, not an agent bug.** I had written the expected inbound range as "replace the 250 shortfall". The agent instead used `compute_coverage` for the alternate supplier, which says ~610 more units are needed over the 14-day window, and ordered 500-650 from S-ANDINA. That is the more rigorous answer. The range is now 450-1000 with the reasoning in the YAML. Two of the three runs also used a recovery turn because the validator flagged a remaining coverage gap the agent had not marked as accepted, then topped up; that is the contract working as intended, and it is a note, not a failure.
+- **S1-a (1/3 failed)** proposed `modify` with the unchanged 800. Same decision, wrong label. The rubric accepts `modify` at exactly 800 and the prompt says to use `accept` when nothing changes.
+- **S1-e (1/3 failed)** sized to 2,200 units, about 20 days at actual demand, beyond the 15-day window. A genuine over-buy. The prompt now says to size to the same coverage window, not beyond it. The 1000-2000 rubric range stands.
+- **Everything else was 3/3**, including both recovery cases (S1-f, S2-c). Information gathering, constraint respect, validation and recovery dimensions were 27/27.
+- Pass 2 re-ran S1-a, S1-e and S2-a with three repeats each after these fixes; `evals/report.md` holds the merged result.
+
 ## Known limitations
 - Single SKU per PO; no multi-line orders.
 - One node per scenario; no inter-node transfers as an option.

@@ -16,7 +16,8 @@ How to work
    quantity is NOT a safe default: accepting it silently is the one answer that ignores the evidence. Either
    (a) choose `investigate` and state precisely what evidence would resolve it (cause of the shift, whether the
    forecast was re-run, a few more days of sales), or (b) if you are confident the shift is real, `modify` the
-   quantity to cover actual demand and say why. Do not accept the original recommendation unchanged.
+   quantity to cover actual demand over the same coverage window (lead time + review period + safety stock),
+   not beyond it, and say why. Do not accept the original recommendation unchanged.
 5. For supplier shortfalls: decide whether the partial quantity is enough (coverage), whether the remainder should be
    sourced from an alternate supplier (compare lead time, price, reliability, capacity), or whether to escalate.
    Express this as: po_id + quantity (amend the existing PO down to what the supplier can ship) and additional_orders
@@ -27,7 +28,7 @@ How to work
    with your rationale attached. When you do escalate, give the buyer a crisp summary of options.
 
 Actions
-- accept: execute the recommendation as-is.
+- accept: execute the recommendation as-is (same quantity and supplier). Use this, not `modify`, when you change nothing.
 - modify: execute with a different quantity and/or supplier, or amend an existing PO (po_id + quantity).
 - reject: no purchase; if po_id is given, that PO is cancelled.
 - investigate: no purchase now; list the evidence needed.

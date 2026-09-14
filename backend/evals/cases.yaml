@@ -16,11 +16,12 @@
 #     po_status          expected status of named POs
 #     budget_headroom_min / storage_free_min
 
+# `modify` with the unchanged 800 is an accept by another name; the quantity range pins it.
 - id: S1-a
   scenario: S1-a
   sku: SKU-COLA-2L
   node_id: N-BOG
-  expected_actions: [accept]
+  expected_actions: [accept, modify]
   expected_qty: {min: 800, max: 800}
   required_tools: [compute_coverage, check_constraints]
   expected_kinds: [create_po]
@@ -102,7 +103,10 @@
   expected_status: [completed]
   auto_approve: true
   expect_recovery: false
-  final: {inbound: {min: 450, max: 650}, po_status: {PO-1001: amended}, budget_headroom_min: 0}
+  # After the 250 partial, coverage math says ~610 more units are needed over the 14-day window with S-ANDINA
+  # (lead 5 + review 7 + safety 2). Replacing only the 250 shortfall (inbound 500) or covering the full target
+  # (inbound ~900) are both defensible; more than 1000 is over-buying.
+  final: {inbound: {min: 450, max: 1000}, po_status: {PO-1001: amended}, budget_headroom_min: 0}
 
 - id: S2-b
   scenario: S2-b

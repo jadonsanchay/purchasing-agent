@@ -210,6 +210,7 @@ def main() -> None:
     ap.add_argument("--only", default="")
     ap.add_argument("--cases", default=str(HERE / "cases.yaml"))
     ap.add_argument("--db", default="./data/evals.db", help="separate db so evals never clobber the dev server")
+    ap.add_argument("--resume", action="store_true", help="skip (case, rep) pairs already present in results.json")
     args = ap.parse_args()
 
     settings.db_path = args.db
@@ -218,21 +219,36 @@ def main() -> None:
         wanted = set(args.only.split(","))
         cases = [c for c in cases if c["id"] in wanted]
 
+    suffix = "-scripted" if args.provider == "scripted" else ""
+    report = HERE / f"report{suffix}.md"
+    results_path = HERE / f"results{suffix}.json"
+
+    # --resume: keep completed (case, rep) pairs from a previous partial run and only run what is missing
     results: list[dict] = []
+    if args.resume and results_path.exists():
+        results = json.loads(results_path.read_text())
+        print(f"resuming: {len(results)} run(s) already recorded")
+    done = {(r["case"], r["rep"]) for r in results}
+
     per_case: dict[str, list[bool]] = defaultdict(list)
     for case in cases:
         for rep in range(1, args.repeat + 1):
+            if (case["id"], rep) in done:
+                continue
             state, sc, secs = run_case(case, args.provider)
-            per_case[case["id"]].append(sc["passed"])
             results.append({"case": case["id"], "rep": rep, "score": sc, "seconds": secs, "summary": state.final_summary, "state": state.model_dump(mode="json")})
             flag = "PASS" if sc["passed"] else "FAIL"
             notes = "; ".join(n for d in DIMENSIONS for n in sc["dimensions"][d]["notes"])
-            print(f"[{flag}] {case['id']} run {rep}: {sc['facts']['action']} -> {state.status} ({secs:.1f}s) {notes}")
+            print(f"[{flag}] {case['id']} run {rep}: {sc['facts']['action']} -> {state.status} ({secs:.1f}s) {notes}", flush=True)
+            # persist after every run so a killed process loses nothing
+            results_path.write_text(json.dumps(results, indent=1, default=str))
+            write_report(report, args.provider, results, args.repeat)
 
-    suffix = "-scripted" if args.provider == "scripted" else ""
-    report = HERE / f"report{suffix}.md"
+    results.sort(key=lambda r: (r["case"], r["rep"]))
+    for r in results:
+        per_case[r["case"]].append(r["score"]["passed"])
     write_report(report, args.provider, results, args.repeat)
-    (HERE / f"results{suffix}.json").write_text(json.dumps(results, indent=1, default=str))
+    results_path.write_text(json.dumps(results, indent=1, default=str))
     total = sum(sc["score"]["passed"] for sc in results)
     print(f"\n{total}/{len(results)} runs passed. Report: {report}")
     if args.repeat > 1:

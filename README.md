@@ -107,7 +107,7 @@ The brief asks how the system knows a resulting PO is actually acceptable and wh
 
 `run_evals.py` runs every case (optionally `--repeat N`), auto-approves where a human would, and writes `evals/report.md` with per-dimension pass rates, per-run facts, and every rationale for reading.
 
-The rubric is itself tested (`tests/test_evals.py`): it must pass all nine reference trajectories and must **fail** a blind accept, an over-buy on top of an open PO, an unneeded alternate order, and a run that skipped recovery. `evals/report-scripted.md` is the harness self-check (9/9). The live-model report is generated with `make evals` once an API key is present.
+The rubric is itself tested (`tests/test_evals.py`): it must pass all nine reference trajectories and must **fail** a blind accept, an over-buy on top of an open PO, an unneeded alternate order, and a run that skipped recovery. `evals/report-scripted.md` is the harness self-check (9/9). `evals/report.md` is the live-model report (gpt-4.1, three repeats per case); the first live pass and what it changed are written up in [docs/decisions.md](docs/decisions.md).
 
 Rationale quality is not scored by an LLM judge; the report shows the rationales and a number-density signal so a reviewer can judge them directly.
 

@@ -70,3 +70,19 @@ def test_sizing_to_actual_demand_with_approval_passes_s1e():
     st = run("S1-e", investigate_cola(1300) + [[proposal("modify", 1300, inbound=1300, gap=True)]])
     sc = score(CASES["S1-e"], st)
     assert sc["passed"], sc["dimensions"]
+
+
+def test_s1a_modify_with_unchanged_quantity_counts_as_accept():
+    st = run("S1-a", investigate_cola() + [[proposal("modify", 800, inbound=800)]])
+    assert score(CASES["S1-a"], st)["passed"]
+
+
+def test_s2a_covering_full_target_from_alternate_passes():
+    milk = {"sku": "SKU-MILK-1L", "node_id": "N-MDE"}
+    st = run("S2-a", [
+        [("compute_coverage", {**milk, "supplier_id": "S-ANDINA"}), ("list_suppliers_for_sku", {"sku": "SKU-MILK-1L"}),
+         ("check_constraints", {**milk, "supplier_id": "S-ANDINA", "quantity": 650, "recommended_qty": None})],
+        [proposal("modify", 250, supplier="S-PACIFICO", po_id="PO-1001", extra=[{"supplier_id": "S-ANDINA", "quantity": 650}], status="confirmed", inbound=900)],
+    ])
+    sc = score(CASES["S2-a"], st)
+    assert sc["passed"], sc["dimensions"]
