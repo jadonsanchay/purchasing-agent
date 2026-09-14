@@ -34,7 +34,7 @@ SUPPLIERS = [
 
 SUPPLIER_PRODUCTS = [
     # supplier_id, sku, unit_price, moq, pack_size, available_capacity
-    ("S-ANDINA", "SKU-COLA-2L", 1.20, 200, 50, 5000),
+    ("S-ANDINA", "SKU-COLA-2L", 1.20, 200, 100, 5000),
     ("S-PACIFICO", "SKU-COLA-2L", 1.28, 100, 20, 1500),
     ("S-ANDINA", "SKU-CHIPS-150", 0.80, 200, 50, 3000),
     ("S-NORTE", "SKU-CHIPS-150", 0.84, 150, 50, 1000),
