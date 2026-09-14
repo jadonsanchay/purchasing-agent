@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from app import main
 from app.agent.llm import ScriptedLLM
 
-from .scripts import investigate_cola, proposal
+from app.agent.scripted import investigate_cola, proposal
 
 
 def client_with_script(script):

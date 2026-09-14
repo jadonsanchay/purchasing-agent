@@ -11,6 +11,7 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=BACKEND_DIR / ".env", extra="ignore")
 
+    llm_provider: str = "openai"  # openai | scripted (no-key demo mode using reference trajectories)
     openai_api_key: str | None = None
     openai_model: str = "gpt-4.1"
 

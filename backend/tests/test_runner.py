@@ -4,7 +4,7 @@ from app.agent.runner import Runner
 from app.config import settings
 from app.erp import reads
 
-from .scripts import COLA, investigate_cola, proposal
+from app.agent.scripted import COLA, SCRIPTS, investigate_cola, proposal
 
 
 def run(scenario_id, script):
@@ -121,3 +121,20 @@ def test_run_persists_and_reloads():
     assert loaded is not None and loaded.state.status == "awaiting_approval" and loaded.plan
     st2 = loaded.approve()
     assert st2.status == "completed"
+
+
+import pytest
+
+EXPECTED_STATUS = {"S1-a": "completed", "S1-b": "completed", "S1-c": "awaiting_approval", "S1-d": "completed", "S1-e": "completed",
+                   "S1-f": "awaiting_approval", "S2-a": "completed", "S2-b": "completed", "S2-c": "escalated"}
+
+
+@pytest.mark.parametrize("sid", list(SCRIPTS))
+def test_reference_trajectories_run_clean(sid):
+    r, st = run(sid, [list(t) for t in SCRIPTS[sid]])
+    assert st.status == EXPECTED_STATUS[sid], st.final_summary
+    if st.status == "awaiting_approval":
+        st = r.approve()
+        assert st.status == "completed"
+    if st.status == "completed" and st.validations:
+        assert st.validations[-1].ok

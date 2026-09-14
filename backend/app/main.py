@@ -8,7 +8,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from . import db, scenarios
-from .agent.llm import LLM, OpenAILLM
+from .agent.llm import LLM, OpenAILLM, ScriptedLLM
+from .agent.scripted import SCRIPTS
 from .agent.runner import Runner, get_runner
 from .config import settings
 from .erp import reads
@@ -24,7 +25,8 @@ app = FastAPI(title="AI Purchasing Agent", version="0.1.0", lifespan=lifespan)
 
 @app.get("/api/health")
 def health() -> dict:
-    return {"ok": True}
+    scripted = settings.llm_provider == "scripted"
+    return {"ok": True, "llm_configured": scripted or bool(settings.openai_api_key), "model": "scripted reference trajectories" if scripted else settings.openai_model}
 
 
 # ---------------------------------------------------------------- scenarios
@@ -46,11 +48,13 @@ def load_scenario(scenario_id: str) -> dict:
 _llm_factory = None  # tests override this with a ScriptedLLM factory
 
 
-def make_llm() -> LLM:
+def make_llm(scenario_id: str | None = None) -> LLM:
     if _llm_factory is not None:
         return _llm_factory()
+    if settings.llm_provider == "scripted":
+        return ScriptedLLM(SCRIPTS.get(scenario_id or "", []))
     if not settings.openai_api_key:
-        raise HTTPException(503, "OPENAI_API_KEY is not set; copy .env.example to backend/.env and add a key")
+        raise HTTPException(503, "OPENAI_API_KEY is not set; copy .env.example to backend/.env and add a key (or set LLM_PROVIDER=scripted)")
     return OpenAILLM()
 
 
@@ -67,7 +71,7 @@ def _public(state) -> dict:
 def start_run(body: StartRun) -> dict:
     if body.scenario_id not in scenarios.SCENARIOS:
         raise HTTPException(404, f"unknown scenario {body.scenario_id}")
-    llm = make_llm()
+    llm = make_llm(body.scenario_id)
     scenario = scenarios.load_scenario(body.scenario_id)
     runner = Runner(scenario, llm)
     runner.save()
