@@ -1,0 +1,128 @@
+# Eval cases. One per scenario fixture. Each case states what a correct run looks like along the six
+# questions from the brief: decision correct, information obtained, constraints respected, appropriate
+# action, validated, and behaviour when the first action does not work.
+#
+# Fields
+#   expected_actions     acceptable final decision actions
+#   expected_qty         acceptable final ordered quantity on a NEW po (min/max), when a new PO is expected
+#   required_tools       tools that must have been called before the first proposal (evidence gathering)
+#   expected_kinds       executed ERP action kinds that must appear (successful ones)
+#   forbidden_kinds      executed action kinds that must NOT appear as successful
+#   expected_status      acceptable terminal run status
+#   auto_approve         harness approves when the run pauses for a human
+#   expect_recovery      whether the run should have needed at least one recovery turn
+#   final                checks on the post-run ERP state
+#     inbound            min/max expected-inbound units for the SKU at the node
+#     po_status          expected status of named POs
+#     budget_headroom_min / storage_free_min
+
+- id: S1-a
+  scenario: S1-a
+  sku: SKU-COLA-2L
+  node_id: N-BOG
+  expected_actions: [accept]
+  expected_qty: {min: 800, max: 800}
+  required_tools: [compute_coverage, check_constraints]
+  expected_kinds: [create_po]
+  expected_status: [completed]
+  auto_approve: true
+  expect_recovery: false
+  final: {inbound: {min: 800, max: 800}, budget_headroom_min: 0, storage_free_min: 0}
+
+- id: S1-b
+  scenario: S1-b
+  sku: SKU-COLA-2L
+  node_id: N-BOG
+  expected_actions: [reject, modify]
+  expected_qty: {min: 0, max: 200}
+  required_tools: [compute_coverage]
+  forbidden_kinds: [amend_po, cancel_po]
+  expected_status: [completed]
+  auto_approve: true
+  expect_recovery: false
+  final: {inbound: {min: 700, max: 900}, budget_headroom_min: 0}
+
+- id: S1-c
+  scenario: S1-c
+  sku: SKU-COLA-2L
+  node_id: N-BOG
+  expected_actions: [modify, escalate]
+  expected_qty: {min: 200, max: 400}
+  required_tools: [compute_coverage, check_constraints]
+  expected_status: [completed, escalated]
+  auto_approve: true
+  expect_recovery: false
+  final: {inbound: {min: 0, max: 400}, budget_headroom_min: 0}
+
+- id: S1-d
+  scenario: S1-d
+  sku: SKU-COLA-2L
+  node_id: N-BOG
+  expected_actions: [modify, investigate]
+  expected_qty: {min: 200, max: 600}
+  required_tools: [compute_coverage, check_constraints]
+  expected_status: [completed]
+  auto_approve: true
+  expect_recovery: false
+  final: {inbound: {min: 0, max: 600}, storage_free_min: 0}
+
+- id: S1-e
+  scenario: S1-e
+  sku: SKU-COLA-2L
+  node_id: N-BOG
+  expected_actions: [investigate, escalate]
+  required_tools: [get_demand, compute_coverage]
+  forbidden_kinds: [create_po]
+  expected_status: [completed, escalated]
+  auto_approve: false
+  expect_recovery: false
+  final: {inbound: {min: 0, max: 0}}
+
+- id: S1-f
+  scenario: S1-f
+  sku: SKU-COLA-2L
+  node_id: N-BOG
+  expected_actions: [modify, escalate]
+  expected_qty: {min: 200, max: 400}
+  required_tools: [compute_coverage, check_constraints]
+  expected_status: [completed, escalated]
+  auto_approve: true
+  expect_recovery: true
+  final: {inbound: {min: 0, max: 400}, budget_headroom_min: 0}
+
+- id: S2-a
+  scenario: S2-a
+  sku: SKU-MILK-1L
+  node_id: N-MDE
+  expected_actions: [modify]
+  required_tools: [compute_coverage, list_suppliers_for_sku, check_constraints]
+  expected_kinds: [amend_po, create_po]
+  expected_status: [completed]
+  auto_approve: true
+  expect_recovery: false
+  final: {inbound: {min: 450, max: 650}, po_status: {PO-1001: amended}, budget_headroom_min: 0}
+
+- id: S2-b
+  scenario: S2-b
+  sku: SKU-RICE-1KG
+  node_id: N-BOG
+  expected_actions: [modify, accept]
+  required_tools: [compute_coverage]
+  expected_kinds: [amend_po]
+  forbidden_kinds: [create_po]
+  expected_status: [completed]
+  auto_approve: true
+  expect_recovery: false
+  final: {inbound: {min: 250, max: 250}, po_status: {PO-1002: amended}}
+
+- id: S2-c
+  scenario: S2-c
+  sku: SKU-CHIPS-150
+  node_id: N-MDE
+  expected_actions: [escalate]
+  required_tools: [compute_coverage, list_suppliers_for_sku]
+  expected_kinds: [amend_po]
+  expected_status: [escalated]
+  auto_approve: true
+  expect_recovery: true
+  final: {inbound: {min: 250, max: 250}, po_status: {PO-1003: amended}}

@@ -27,3 +27,6 @@ frontend/dist/
 .idea/
 .vscode/
 *.log
+
+# eval artefacts: keep the markdown reports, not the full run dumps
+backend/evals/results*.json
