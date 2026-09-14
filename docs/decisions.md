@@ -43,7 +43,9 @@ Short log of the choices that shaped the solution, so they can be discussed and 
 - **S1-a (1/3 failed)** proposed `modify` with the unchanged 800. Same decision, wrong label. The rubric accepts `modify` at exactly 800 and the prompt says to use `accept` when nothing changes.
 - **S1-e (1/3 failed)** sized to 2,200 units, about 20 days at actual demand, beyond the 15-day window. A genuine over-buy. The prompt now says to size to the same coverage window, not beyond it. The 1000-2000 rubric range stands.
 - **Everything else was 3/3**, including both recovery cases (S1-f, S2-c). Information gathering, constraint respect, validation and recovery dimensions were 27/27.
-- Pass 2 re-ran S1-a, S1-e and S2-a with three repeats each after these fixes; `evals/report.md` holds the merged result.
+- **Pass 2** re-ran S1-a, S1-e and S2-a with three repeats each after those fixes: S1-a 3/3, S1-e 2/3, S2-a 1/3. The two S2-a "failures" were label artefacts: the agent's first proposal (amend to 250, 650 from the alternate, 900 inbound) was right, but it predicted the PO status `partially_confirmed` where the ERP says `amended`. The validator flagged that, the agent spent a recovery turn confirming the state with a bare `accept`, and the rubric then judged that trailing `accept` instead of the decision that acted. Fixes: the validator compares PO status by class (live vs cancelled/rejected) since quantity mismatches are already caught separately, and the rubric judges the last decision that produced ERP actions.
+- **Pass 3** re-ran S2-a: 3/3, no recovery turns. **Final: 26/27.** The one remaining failure is S1-e run 1, where the model accepted the forecast-based 800 despite writing the +83% spike into its own rationale. That is a real inconsistency on the hardest judgement case and is left in the report as such rather than tuned away.
+- Total live spend across all passes was roughly $1.2 on gpt-4.1 (about 45 runs including smoke tests).
 
 ## Known limitations
 - Single SKU per PO; no multi-line orders.
