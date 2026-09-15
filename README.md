@@ -35,6 +35,10 @@ API docs are at http://localhost:8000/docs once the backend is running.
 
 ## Demo
 
+![Live run of S1-f: the agent's first PO is rejected on budget, the validator flags the mismatch, the agent revises to the maximum feasible quantity, the gate pauses for approval, and the outcome validates](docs/demo.gif)
+
+*Live gpt-4.1 run of S1-f (budget consumed during execution): investigate, first PO rejected, validation mismatch, revised decision, human approval, validated outcome.*
+
 1. Open the UI, pick a scenario in the left rail (loading a scenario resets the mock ERP so every run is reproducible).
 2. Press **Run agent**. The trace fills in live: tool calls, the proposed decision, the policy gate with every check, execution results, and the validation diff.
 3. When the gate needs a human (PO value over the threshold, or a large deviation from the system recommendation), the run pauses with **Approve and execute** / **Reject**.

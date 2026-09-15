@@ -96,7 +96,7 @@ code, .mono { font-family: var(--mono); font-size: 12px; }
 .kv dt { color: var(--muted-fg); }
 .kv dd { margin: 0; }
 
-.checks { display: grid; grid-template-columns: 24px 140px 1fr; gap: var(--s1) var(--s2); align-items: baseline; }
+.checks { display: grid; grid-template-columns: 24px 176px 1fr; gap: var(--s1) var(--s2); align-items: baseline; }
 .check-ok { color: var(--success); }
 .check-warn { color: var(--warning); }
 .check-fail { color: var(--danger); }

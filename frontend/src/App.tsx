@@ -18,14 +18,31 @@ export default function App() {
 
   useEffect(() => {
     api.health().then(setHealth).catch(() => setHealth(null))
+    // deep link: /?run=<run_id> opens an existing run (used for demos and sharing a trace)
+    const linked = new URLSearchParams(window.location.search).get('run')
     api
       .scenarios()
       .then((s) => {
         setScenarios(s)
         setSelected(s[0]?.id ?? null)
+        if (linked) {
+          api
+            .getRun(linked)
+            .then((r) => {
+              setRun(r)
+              setSelected(r.scenario_id)
+            })
+            .catch((e) => setError((e as Error).message))
+        }
       })
       .catch((e) => setError((e as Error).message))
   }, [])
+
+  useEffect(() => {
+    // /?run=<id>#gate scrolls to a card once the run has rendered (used by the demo capture)
+    const anchor = window.location.hash.slice(1)
+    if (run && anchor) document.getElementById(anchor)?.scrollIntoView()
+  }, [run])
 
   useEffect(() => {
     if (!run || !ACTIVE.has(run.status)) return
@@ -147,9 +164,13 @@ export default function App() {
                 {run.error && <div className="banner danger mono small">{run.error}</div>}
               </div>
 
+              <div id="decision" />
               <DecisionCard run={run} />
+              <div id="gate" />
               <GateCard run={run} busy={busy} onApprove={() => act(() => api.approve(run.run_id))} onReject={(note) => act(() => api.reject(run.run_id, note))} />
+              <div id="outcome" />
               <OutcomeCard run={run} />
+              <div id="trace" />
               <Trace trace={run.trace} />
             </>
           )}
